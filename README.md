@@ -11,7 +11,7 @@
   - [4. analyzer.py - Intelligence Reporter](#4-analyzerpy---intelligence-reporter)
 
 
-# Vulnerability Data Processing and Analysis Toolkit
+# Shadowserver Data Processing and Analysis Toolkit
 
 This toolkit provides a suite of Python scripts designed to automate the processing, cleaning, analysis, and management of vulnerability scan reports, particularly those from sources like Shadowserver. It allows you to aggregate raw data, de-duplicate records, split large datasets, and generate summary intelligence reports.
 
