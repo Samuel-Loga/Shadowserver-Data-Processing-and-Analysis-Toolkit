@@ -1,3 +1,7 @@
+# Shadowserver Data Processing and Analysis Toolkit
+
+This suite of Python scripts are designed to automate the processing, cleaning, analysis, and management of vulnerability scan reports, particularly those from sources like **Shadowserver**. It allows you to aggregate raw data, de-duplicate records, split large datasets, and generate summary intelligence reports.
+
 ## Table of Contents
 
 - [Features](#features)  
@@ -9,11 +13,6 @@
   - [2. deduplicate_records.py - Record Cleaner](#2-deduplicate_recordspy---record-cleaner)  
   - [3. split_csv_by_ip.py - Data Splitter](#3-split_csv_by_ippy---data-splitter)  
   - [4. analyzer.py - Intelligence Reporter](#4-analyzerpy---intelligence-reporter)
-
-
-# Shadowserver Data Processing and Analysis Toolkit
-
-This toolkit provides a suite of Python scripts designed to automate the processing, cleaning, analysis, and management of vulnerability scan reports, particularly those from sources like Shadowserver. It allows you to aggregate raw data, de-duplicate records, split large datasets, and generate summary intelligence reports.
 
 ---
 
