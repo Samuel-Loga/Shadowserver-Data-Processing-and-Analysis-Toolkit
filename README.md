@@ -51,22 +51,21 @@ pip install pandas
 For the scripts to work seamlessly, it's recommended to organize your directories as follows:
 
 shadow_intel_processor/
-|-- dst/
-|   |-- destination.csv             # Master aggregated file from the processor script
-|   |-- destination_deduplicated.csv  # (Optional) Cleaned master file
-|   `-- processed_files.txt         # Log of processed source files
-|-- splitted/
-|   |-- 192_168_1.csv               # Example split file
-|   `-- ...                         # Other split files
-|-- src/
-|   |-- report_1.csv                # New raw report files go here
-|   `-- report_2.xlsx
-|
-|-- shadowserver_files_processor.py
-|-- deduplicate_records.py
-|-- split_csv_by_ip.py
-|-- analyzer.py
-`-- README.md
+├── dst/
+│ ├── destination.csv # Master aggregated file
+│ ├── destination_deduplicated.csv # (Optional) Cleaned master file
+│ └── processed_files.txt # Log of processed source files
+├── splitted/
+│ ├── 192_168_1.csv # Example split file
+│ └── ... # Other split files
+├── src/
+│ ├── report_1.csv # New raw report files go here
+│ └── report_2.xlsx
+├── shadowserver_files_processor.py
+├── deduplicate_records.py
+├── split_csv_by_ip.py
+├── analyzer.py
+└── README.md
 
 ## Script Usage
 ### 1. `shadowserver_files_processor.py` - Data Aggregator
