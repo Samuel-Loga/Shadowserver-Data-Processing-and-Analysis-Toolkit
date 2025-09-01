@@ -50,6 +50,7 @@ pip install pandas
 ## Recommended File Structure
 For the scripts to work seamlessly, it's recommended to organize your directories as follows:
 
+```bash
 shadow_intel_processor/
 ├── dst/
 │ ├── destination.csv # Master aggregated file
@@ -66,7 +67,7 @@ shadow_intel_processor/
 ├── split_csv_by_ip.py
 ├── analyzer.py
 └── README.md
-
+```
 ## Script Usage
 ### 1. `shadowserver_files_processor.py` - Data Aggregator
 This script is your starting point. It reads all .csv and .xlsx files from the src directory, processes them, and appends the data to the master destination.csv file in the dst directory. It keeps track of processed files in processed_files.txt to prevent re-processing.
