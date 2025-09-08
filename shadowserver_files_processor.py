@@ -8,6 +8,12 @@ source_dir = r'd:\PD\shadow_intel_processor\src'
 destination_file = r'd:\PD\shadow_intel_processor\dst\destination.csv'
 processed_log_path = r'd:\PD\shadow_intel_processor\dst\processed_files.txt'
 
+# === Automatically create destination directory if it doesn't exist ===
+destination_dir = os.path.dirname(destination_file)
+if not os.path.exists(destination_dir):
+    print(f"Destination directory not found. Creating it at: {destination_dir}")
+    os.makedirs(destination_dir)
+
 # === Mapping: Source → Destination Columns ===
 column_map = {
     'timestamp': 'Timestamp',
@@ -37,10 +43,10 @@ def extract_issue_from_filename(filename):
     return None
 
 # === Load already processed files ===
-if os.path.exists(processed_log_path):
+try:
     with open(processed_log_path, 'r') as f:
         processed_files = set(f.read().splitlines())
-else:
+except FileNotFoundError:
     processed_files = set()
 
 # === Load destination or create fresh ===
