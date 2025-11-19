@@ -27,6 +27,7 @@ This suite of Python scripts are designed to automate the processing, cleaning, 
 
 ## Scripts Overview
 
+- **`email_downloader.py`**: Automates fetching of reports from Shadowserver emails. It connects to your email inbox via IMAP, searches for unread emails from Shadowserver, and downloads report files to `src` folder.
 - **`shadowserver_files_processor.py`**: The primary data aggregation script. It reads new reports from a source directory and merges them into a master `destination.csv`.  
 - **`deduplicate_records.py`**: A cleaning utility that processes the master file to remove redundant entries while intelligently updating the recurring issue count.  
 - **`split_csv_by_ip.py`**: A segmentation script that splits a large CSV into multiple smaller files based on the first three octets of the IP address.  
@@ -44,6 +45,24 @@ Before using these scripts, ensure you have Python and the pandas library instal
 ```bash
 pip install pandas
 ```
+- **Other Python Librariesv:** Install by running the following command in your terminal:
+
+```bash
+pip install requests python-dotenv
+```
+
+- **Email Configuration** *(Important for download of email files)*
+To keep your credentials secure, this script uses environment variables stored in a `.env` file. It does not hardcode your password.
+
+--> Create a new file named .env in the same directory as email_downloader.py.
+--> Add the following lines to the file:
+
+```bash
+SHADOWSERVER_EMAIL_USER=your_email@gmail.com
+SHADOWSERVER_EMAIL_PASS=your_16_char_app_password
+```
+
+***Note for Outlook/Exchange Users:*** You may need to change the IMAP_SERVER variable in email_downloader.py to outlook.office365.com.
 
 ## Recommended File Structure
 For the scripts to work seamlessly, it's recommended to organize your directories as follows:
@@ -60,8 +79,10 @@ shadow_intel_processor/
 ├── src/
 │ ├── report_1.csv # New raw report files go here
 │ └── report_2.xlsx
+├── .env
 ├── shadowserver_files_processor.py
 ├── deduplicate_records.py
+├── email_downloader.py
 ├── split_csv_by_ip.py
 ├── analyzer.py
 └── README.md
@@ -69,8 +90,33 @@ shadow_intel_processor/
 ## Script Usage
 A typical recommended workflow for using these scripts would be:
 
+
+
+### 1. `email_downloader.py` - Email Dowanloader
+This script is your starting point. It automates the process of fetching vulnerability reports from Shadowserver emails. It connects to your email inbox via IMAP, searches for unread emails from Shadowserver, and intelligently downloads report files. 
+
+**Configuration options**
+You can modify these settings directly in email_downloader.py if needed:
+
+- `DOWNLOAD_FOLDER`: Default is d:\PD\shadow_intel_processor\src. Change this if you want files saved elsewhere.
+
+- `SEARCH_CRITERIA`: Default is '(UNSEEN FROM "noreply@shadowserver.org")'.
+--> `UNSEEN`: Only checks emails you haven't opened yet.
+--> Remove `UNSEEN` to check all emails (useful for the first run).
+
+- `IMAP_SERVER`: Default is "imap.gmail.com". Change this to match your email provider (e.g., imap.mail.yahoo.com).
+
+**How to use**
+You can run the script directly from your terminal to fetch emails immediately.
+
+```bash
+python email_downloader.py
+```
+
+If your `.env` file is set up correctly, it will start automatically. If not, it will prompt you to enter your email and password manually.
+
 ### 1. `shadowserver_files_processor.py` - Data Aggregator
-This script is your starting point. It reads all .csv files from the src directory, processes them, and appends the data to the master destination.csv file in the dst directory. It keeps track of processed files in processed_files.txt to prevent re-processing.
+It reads all .csv files from the src directory, processes them, and appends the data to the master destination.csv file in the dst directory. It keeps track of processed files in processed_files.txt to prevent re-processing.
 
 **How to Use:**
 Place new raw report files (.csv) into the src/ directory. Run the processor to merge them into your master file.
