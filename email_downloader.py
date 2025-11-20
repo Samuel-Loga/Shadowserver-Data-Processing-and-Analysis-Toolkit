@@ -17,9 +17,9 @@ EMAIL_USER = os.getenv("SHADOWSERVER_EMAIL_USER", "")
 EMAIL_PASS = os.getenv("SHADOWSERVER_EMAIL_PASS", "")
 
 DOWNLOAD_FOLDER = r'd:\PD\shadow_intel_processor\src'
-# We look for emails from Shadowserver. 
-# If you get them forwarded or via a digest, ensure this criteria matches.
-SEARCH_CRITERIA = '(FROM "s.loga@maren.ac.mw")'
+
+# UPDATED CRITERIA: added 'UNSEEN' to only fetch unread emails
+SEARCH_CRITERIA = '(UNSEEN FROM "maren-request@list.shadowserver.org")' 
 
 def clean_filename(filename):
     return re.sub(r'[\\/*?:"<>|]', "", filename)
@@ -62,16 +62,16 @@ def download_file_from_url(url, target_dir, log_callback):
                 try:
                     with zipfile.ZipFile(io.BytesIO(file_content)) as z:
                         z.extractall(target_dir)
-                        log_callback(f"  ⬇️ Link Processed: Extracted {filename}")
+                        log_callback(f"  Link Processed: Extracted {filename}")
                         return 1
                 except zipfile.BadZipFile:
-                    log_callback(f"  ⚠️ Bad Zip from link: {filename}", "error")
+                    log_callback(f"  Bad Zip from link: {filename}", "error")
                     return 0
             else:
                 # Save regular file
                 with open(filepath, "wb") as f:
                     f.write(file_content)
-                log_callback(f"  ⬇️ Link Downloaded: {filename}")
+                log_callback(f"  Link Downloaded: {filename}")
                 return 1
 
     except Exception as e:
@@ -88,21 +88,21 @@ def download_shadowserver_reports(username, password, server=IMAP_SERVER, target
         mail.login(username, password)
         mail.select("inbox")
 
-        log_callback("Searching for emails...")
+        log_callback("Searching for NEW (unopened) emails...")
         status, messages = mail.search(None, SEARCH_CRITERIA)
         
         email_ids = messages[0].split()
         if not email_ids:
-            log_callback("No Shadowserver emails found.")
+            log_callback("No new unread Shadowserver emails found.")
             return
 
-        log_callback(f"Found {len(email_ids)} emails. Scanning for files & links...")
+        log_callback(f"Found {len(email_ids)} unread emails. Scanning for files & links...")
         
         count = 0
         processed_urls = set()
 
-        # Process latest 10 emails to avoid taking too long (Adjust as needed)
-        for email_id in reversed(email_ids[-10:]):
+        # Process latest 20 emails to avoid taking too long (Adjust as needed)
+        for email_id in reversed(email_ids[-20:]):
             res, msg = mail.fetch(email_id, "(RFC822)")
             for response in msg:
                 if isinstance(response, tuple):
@@ -129,13 +129,13 @@ def download_shadowserver_reports(username, password, server=IMAP_SERVER, target
                                             try:
                                                 with zipfile.ZipFile(io.BytesIO(payload)) as z:
                                                     z.extractall(target_dir)
-                                                    log_callback(f"  ⬇️ Attachment Extracted: {filename}")
+                                                    log_callback(f"  Attachment Extracted: {filename}")
                                                     count += 1
                                             except: pass
                                         else:
                                             with open(filepath, "wb") as f:
                                                 f.write(payload)
-                                            log_callback(f"  ⬇️ Attachment Saved: {filename}")
+                                            log_callback(f"  Attachment Saved: {filename}")
                                             count += 1
 
                         # B) Handle Links in Text Body
@@ -159,9 +159,9 @@ def download_shadowserver_reports(username, password, server=IMAP_SERVER, target
         mail.logout()
         
         if count > 0:
-            log_callback(f"✅ Success! {count} new report files added to src.", "success")
+            log_callback(f"Success! {count} new report files added to src.", "success")
         else:
-            log_callback("🏁 Scan complete. No new reports found.", "info")
+            log_callback("Scan complete. No new reports found.", "info")
 
     except imaplib.IMAP4.error as e:
         log_callback(f"IMAP Error: {e}. Check credentials.", "error")
