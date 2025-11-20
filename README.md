@@ -10,10 +10,10 @@ This suite of Python scripts are designed to automate the processing, cleaning, 
 - [Recommended File Structure](#recommended-file-structure)  
 - [Script Usage](#script-usage)
   - [1. email_downloader.py - Email Dowanloader](#1-email_downloaderpy---email-dowanloader) 
-  - [1. shadowserver_files_processor.py - Data Aggregator](#2-shadowserver_files_processorpy---data-aggregator)  
-  - [2. deduplicate_records.py - Record Cleaner](#3-deduplicate_recordspy---record-cleaner)  
-  - [3. split_csv_by_ip.py - Data Splitter](#4-split_csv_by_ippy---data-splitter)  
-  - [4. analyzer.py - Intelligence Reporter](#5-analyzerpy---intelligence-reporter)
+  - [2. shadowserver_files_processor.py - Data Aggregator](#2-shadowserver_files_processorpy---data-aggregator)  
+  - [3. deduplicate_records.py - Record Cleaner](#3-deduplicate_recordspy---record-cleaner)  
+  - [4. split_csv_by_ip.py - Data Splitter](#4-split_csv_by_ippy---data-splitter)  
+  - [5. analyzer.py - Intelligence Reporter](#5-analyzerpy---intelligence-reporter)
 
 ---
 
