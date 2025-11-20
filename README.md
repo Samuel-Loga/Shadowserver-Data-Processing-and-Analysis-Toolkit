@@ -99,7 +99,7 @@ You can modify these settings directly in email_downloader.py if needed:
 
 - `SEARCH_CRITERIA`: Update sending profile '(`UNSEEN FROM` "sending-profile@shadowserver.org")'. `UNSEEN` only checks emails you haven't opened yet. Remove `UNSEEN` to check all emails (useful for the first run).
 
-- `IMAP_SERVER`: Default is "imap.gmail.com". Change this to match your email provider (e.g., imap.mail.yahoo.com).
+- `IMAP_SERVER`: Default is `imap.gmail.com`. Change this to match your email provider (e.g., `imap.mail.yahoo.com`).
 
 **How to Use:**
 
