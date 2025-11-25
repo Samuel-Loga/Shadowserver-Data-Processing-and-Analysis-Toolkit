@@ -2,3 +2,4 @@
 /Rep*
 /s*
 .env*
+__pycache__/
