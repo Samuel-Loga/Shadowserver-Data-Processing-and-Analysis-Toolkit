@@ -19,7 +19,7 @@ EMAIL_PASS = os.getenv("SHADOWSERVER_EMAIL_PASS", "")
 DOWNLOAD_FOLDER = r'd:\PD\shadow_intel_processor\src'
 
 # CRITERIA: fetch unread emails from Shadowserver
-SEARCH_CRITERIA = '(UNSEEN FROM "enter the email address here")'
+SEARCH_CRITERIA = '(UNSEEN FROM "maren-request@list.shadowserver.org")'
 
 def clean_filename(filename):
     return re.sub(r'[\\/*?:"<>|]', "", filename)
