@@ -16,10 +16,11 @@ IMAP_SERVER = "imap.gmail.com"
 EMAIL_USER = os.getenv("SHADOWSERVER_EMAIL_USER", "")
 EMAIL_PASS = os.getenv("SHADOWSERVER_EMAIL_PASS", "")
 
-DOWNLOAD_FOLDER = r'd:\PD\shadow_intel_processor\src'
-
-# CRITERIA: fetch unread emails from Shadowserver
-SEARCH_CRITERIA = '(UNSEEN FROM "source email address")'  # Replace with actual Shadowserver email
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DOWNLOAD_FOLDER = os.path.join(BASE_DIR, 'src')
+# We look for emails from Shadowserver. 
+# If you get them forwarded or via a digest, ensure this criteria matches.
+SEARCH_CRITERIA = '(UNSEEN FROM "noreply@shadowserver.org")' 
 
 def clean_filename(filename):
     return re.sub(r'[\\/*?:"<>|]', "", filename)
@@ -75,7 +76,7 @@ def download_file_from_url(url, target_dir, log_callback):
                 return 1
 
     except Exception as e:
-        log_callback(f"  ❌ Failed to download link {url}: {e}", "error")
+        log_callback(f"  Failed to download link {url}: {e}", "error")
         return 0
 
 def download_shadowserver_reports(username, password, server=IMAP_SERVER, target_dir=DOWNLOAD_FOLDER, log_callback=print):
@@ -101,8 +102,8 @@ def download_shadowserver_reports(username, password, server=IMAP_SERVER, target
         count = 0
         processed_urls = set()
 
-        # Process latest 20 emails to avoid taking too long (Adjust as needed)
-        for email_id in reversed(email_ids[-20:]):
+        # Process latest 10 emails to avoid taking too long (Adjust as needed)
+        for email_id in reversed(email_ids[-10:]):
             res, msg = mail.fetch(email_id, "(RFC822)")
             for response in msg:
                 if isinstance(response, tuple):
@@ -159,9 +160,9 @@ def download_shadowserver_reports(username, password, server=IMAP_SERVER, target
         mail.logout()
         
         if count > 0:
-            log_callback(f"Success! {count} new report files added to src.", "success")
+            log_callback(f"✅ Success! {count} new report files added to src.", "success")
         else:
-            log_callback("Scan complete. No new reports found.", "info")
+            log_callback("🏁 Scan complete. No new reports found.", "info")
 
     except imaplib.IMAP4.error as e:
         log_callback(f"IMAP Error: {e}. Check credentials.", "error")

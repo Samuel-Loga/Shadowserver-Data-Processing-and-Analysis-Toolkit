@@ -1,91 +1,137 @@
-import pandas as pd
 import argparse
+import sys
 from pathlib import Path
+import pandas as pd
+
+
+def get_dynamic_col(df, candidates):
+    """
+    Finds the first matching column name in the DataFrame from a list of
+    candidate names (case-insensitive). Returns None if no match is found.
+    """
+    lower_cols = {str(col).strip().lower(): col for col in df.columns}
+    for candidate in candidates:
+        if candidate.lower() in lower_cols:
+            return lower_cols[candidate.lower()]
+    return None
+
+
+def print_top_counts(df, col_name, section_title, top_n=5):
+    """
+    Safely cleans, filters out empty/null values, and prints the top N
+    value counts for a given column.
+    """
+    if not col_name or col_name not in df.columns:
+        return
+
+    # Clean whitespace and filter out blank or NaN entries
+    cleaned = df[col_name].dropna().astype(str).str.strip()
+    cleaned = cleaned[(cleaned != "") & (cleaned.str.lower() != "nan") & (cleaned.str.lower() != "none")]
+
+    if cleaned.empty:
+        return
+
+    print(f"\n--- {section_title} (Column: '{col_name}') ---")
+    if top_n:
+        print(cleaned.value_counts().nlargest(top_n).to_string())
+    else:
+        print(cleaned.value_counts().to_string())
+
 
 def generate_report(df):
     """
-    Analyzes the dataframe and prints a formatted report to the console.
+    Generates a comprehensive, schema-agnostic intelligence summary report
+    from any Shadowserver CSV DataFrame.
     """
-    # --- Data Preparation ---
-    # Ensure 'State' column exists and filter for open issues
-    if 'State' not in df.columns or df['State'].dropna().empty:
-        print("'State' column is missing or empty. Cannot filter for open issues.")
+    if df is None or df.empty:
+        print("[INFO] The provided dataset is empty. Nothing to analyze.")
         return
 
-    df_open = df[df['State'].str.strip().str.lower() == 'open'].copy()
-    
-    if df_open.empty:
-        print("✅ No 'open' issues found to analyze.")
-        return
-        
-    # Convert 'Recurring Issue' to a number for calculation
-    df_open['Recurring Issue'] = pd.to_numeric(df_open['Recurring Issue'], errors='coerce').fillna(0)
+    # Clean column header whitespace
+    df.columns = [str(col).strip() for col in df.columns]
 
-    # --- Report Generation ---
-    print("\n" + "="*50)
-    print("      Vulnerability Intelligence Report")
-    print("="*50)
+    # Dynamically identify key columns across all 145+ Shadowserver report schemas
+    state_col = get_dynamic_col(df, ['state'])
+    rec_col = get_dynamic_col(df, ['recurring issue', 'recurring_issue'])
+    sev_col = get_dynamic_col(df, ['severity', 'level'])
+    issue_col = get_dynamic_col(df, ['issue', 'type', 'tag'])
+    infection_col = get_dynamic_col(df, ['infection', 'family'])
+    ip_col = get_dynamic_col(df, ['src_ip', 'ip', 'dst_ip', 'source_ip'])
+    port_col = get_dynamic_col(df, ['src_port', 'port', 'dst_port'])
+    proto_col = get_dynamic_col(df, ['protocol', 'proto'])
+    region_col = get_dynamic_col(df, ['src_region', 'region', 'dst_region', 'src_geo', 'geo'])
+    asn_col = get_dynamic_col(df, ['src_asn', 'asn', 'dst_asn'])
 
-    # 1. Overall Summary
-    print("\n--- 📊 Overall Summary ---")
-    print(f"Total Open Issues: {len(df_open)}")
-    if 'Severity' in df_open.columns:
-        print("\nBreakdown by Severity:")
-        severity_counts = df_open['Severity'].str.strip().value_counts()
-        print(severity_counts.to_string())
-    
-    # 2. Top Offenders
-    print("\n--- 🎯 Top 5 Most Common Issues ---")
-    if 'Issue' in df_open.columns:
-        top_issues = df_open['Issue'].str.strip().value_counts().nlargest(5)
-        print(top_issues.to_string())
-    
-    print("\n--- 💻 Top 5 IPs with Most Open Issues ---")
-    if 'IP' in df_open.columns:
-        top_ips = df_open['IP'].str.strip().value_counts().nlargest(5)
-        print(top_ips.to_string())
-
-    # 3. Geographical Distribution
-    print("\n--- 🌍 Issues by Region ---")
-    if 'Region' in df_open.columns and not df_open['Region'].dropna().empty:
-        region_counts = df_open['Region'].str.strip().value_counts()
-        print(region_counts.to_string())
+    # Filter for 'open' records if a State column exists; otherwise analyze all rows
+    if state_col:
+        df_active = df[df[state_col].astype(str).str.strip().str.lower() == 'open'].copy()
+        if df_active.empty:
+            print("[INFO] No 'open' issues found in the dataset.")
+            return
+        scope_label = "Total Open Issues"
     else:
-        print("No region data available.")
+        print("[INFO] 'state' column not found. Analyzing all records in file.")
+        df_active = df.copy()
+        scope_label = "Total Records Analyzed"
 
-    # 4. Recurring Problems
-    print("\n--- 🔄 Recurring Issues ---")
-    recurring_count = len(df_open[df_open['Recurring Issue'] > 0])
-    print(f"Total issues that are recurring: {recurring_count}")
+    # Calculate recurring issue count if the tracking column is present
+    recurring_total = 0
+    if rec_col:
+        df_active[rec_col] = pd.to_numeric(df_active[rec_col], errors='coerce').fillna(0)
+        recurring_total = int((df_active[rec_col] > 0).sum())
 
-    print("\n" + "="*50)
+    # --- Print Formatted Report ---
+    print("\n" + "=" * 55)
+    print("       SHADOWSERVER INTELLIGENCE SUMMARY REPORT")
+    print("=" * 55)
+
+    print("\n--- Overall Summary ---")
+    print(f"{scope_label}: {len(df_active)}")
+    if rec_col:
+        print(f"Recurring Issues:  {recurring_total}")
+
+    # Breakdown by Severity (all severities)
+    print_top_counts(df_active, sev_col, "Breakdown by Severity", top_n=None)
+
+    # Top Issues / Categories
+    print_top_counts(df_active, issue_col, "Top 5 Most Common Issues", top_n=5)
+
+    # Top Malware Infections / Families (common in sinkhole, botnet, and special feeds)
+    if infection_col and infection_col != issue_col:
+        print_top_counts(df_active, infection_col, "Top 5 Infections / Families", top_n=5)
+
+    # Top Affected IPs (supports IP, src_ip, dst_ip)
+    print_top_counts(df_active, ip_col, "Top 5 IPs with Most Events", top_n=5)
+
+    # Top Targeted/Source Ports and Protocols
+    print_top_counts(df_active, port_col, "Top 5 Ports", top_n=5)
+    print_top_counts(df_active, proto_col, "Breakdown by Protocol", top_n=None)
+
+    # Geographic and Network (ASN) Distribution
+    print_top_counts(df_active, region_col, "Top 10 Regions / Geos", top_n=10)
+    print_top_counts(df_active, asn_col, "Top 5 ASNs", top_n=5)
+
+    print("\n" + "=" * 55)
 
 
-def main():
-    """
-    Main function to load data and initiate analysis.
-    """
+if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Analyzes the master vulnerability CSV file and generates an intelligence report."
+        description="Dynamically analyze any processed Shadowserver CSV report."
     )
     parser.add_argument(
         "filepath",
-        help="Path to the destination.csv file to be analyzed."
+        help="Path to the CSV file to analyze (e.g., dst/accessible_rdp_events.csv)"
     )
     args = parser.parse_args()
-    
-    destination_file = Path(args.filepath)
-    
-    if not destination_file.exists():
-        print(f"Error: File not found at '{destination_file}'")
-        return
 
-    print(f"Reading data from '{destination_file}'...")
+    target_path = Path(args.filepath)
+    if not target_path.exists():
+        print(f"[ERROR] File not found: {target_path}")
+        sys.exit(1)
+
     try:
-        df = pd.read_csv(destination_file, dtype=str)
-        generate_report(df)
+        df_input = pd.read_csv(target_path, dtype=str, low_memory=False)
+        generate_report(df_input)
     except Exception as e:
-        print(f"Failed to read or process the file. Reason: {e}")
-
-if __name__ == "__main__":
-    main()
+        print(f"[ERROR] Failed to analyze '{target_path}': {e}")
+        sys.exit(1)

@@ -3,3 +3,8 @@
 /s*
 .env*
 __pycache__/
+1*
+dec*
+/bkp
+/vuln*
+/dedup

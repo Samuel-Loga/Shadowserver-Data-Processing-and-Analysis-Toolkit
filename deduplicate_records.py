@@ -2,90 +2,96 @@ import pandas as pd
 import os
 import argparse
 
+def get_dynamic_col(df, candidates):
+    """Finds the first existing column from a list of candidates (case-insensitive)."""
+    lower_cols = {col.lower(): col for col in df.columns}
+    for candidate in candidates:
+        if candidate.lower() in lower_cols:
+            return lower_cols[candidate.lower()]
+    return None
+
 def deduplicate_and_update(source_file, output_file):
-    """
-    De-duplicates records based on a set of key columns, keeping the latest entry
-    and updating the 'Recurring Issue' count.
-    """
-    # --- 1. Load the Data ---
+    if not os.path.exists(source_file):
+        print(f"[ERROR] Source file not found: '{source_file}'")
+        return
+
     try:
-        print(f"Loading data from '{source_file}'...")
+        print(f"[INFO] Loading data from '{source_file}'...")
         df = pd.read_csv(source_file, dtype=str, low_memory=False)
-        print(f"Found {len(df)} total records.")
-    except FileNotFoundError:
-        print(f"Error: Source file not found at '{source_file}'")
-        return
     except Exception as e:
-        print(f"Error reading CSV file: {e}")
+        print(f"[ERROR] {e}")
         return
 
-    # --- 2. Prepare the Data for Processing ---
-    # Convert Timestamp to a datetime object to allow for correct sorting.
-    # Errors will be converted to 'NaT' (Not a Time), which can be handled.
-    df['Timestamp'] = pd.to_datetime(df['Timestamp'], errors='coerce')
+    # 1. Identify key columns dynamically
+    ts_col = get_dynamic_col(df, ['timestamp', 'time'])
+    ip_col = get_dynamic_col(df, ['src_ip', 'ip', 'dst_ip', 'source_ip'])
+    port_col = get_dynamic_col(df, ['src_port', 'port', 'dst_port'])
+    proto_col = get_dynamic_col(df, ['protocol', 'proto'])
+    sev_col = get_dynamic_col(df, ['severity', 'level'])
+    state_col = get_dynamic_col(df, ['state'])
+    issue_col = get_dynamic_col(df, ['issue'])
 
-    # Convert 'Recurring Issue' to a numeric type for calculations.
-    # Invalid parsing will be set as 0.
-    df['Recurring Issue'] = pd.to_numeric(df['Recurring Issue'], errors='coerce').fillna(0).astype(int)
+    if not ts_col:
+        print(f"[ERROR] No timestamp column found in {source_file}. Cannot safely deduplicate.")
+        return
 
-    # Define the columns that identify a unique, recurring issue.
-    key_columns = ['Severity', 'IP', 'Protocol', 'Port', 'State']
+    # Build grouping keys based on what actually exists in this specific file
+    key_columns = []
+    for col in [ip_col, port_col, proto_col, sev_col, state_col, issue_col]:
+        if col: key_columns.append(col)
 
-    # Drop rows where key identifiers or the timestamp are missing.
-    df.dropna(subset=key_columns + ['Timestamp'], inplace=True)
+    if not key_columns:
+        print(f"[ERROR] No identifiable key columns found (e.g., IP, Port, Issue) to group by.")
+        return
 
-    # --- 3. Sort and Identify Duplicates ---
-    # Sort by the key columns and then by Timestamp in descending order.
-    # This places the most recent record for each group at the top.
-    print("Sorting records to find the latest entries...")
-    df_sorted = df.sort_values(by=key_columns + ['Timestamp'], ascending=[True]*len(key_columns) + [False])
-
-    # Group by the key columns to find duplicates.
-    grouped = df_sorted.groupby(key_columns)
+    print(f"[INFO] Deduplicating dynamically based on columns: {key_columns}")
     
+    # Formatting
+    df[ts_col] = pd.to_datetime(df[ts_col], errors='coerce')
+    rec_col = get_dynamic_col(df, ['recurring issue', 'Recurring Issue'])
+    if rec_col:
+        df[rec_col] = pd.to_numeric(df[rec_col], errors='coerce').fillna(0).astype(int)
+
+    # Drop rows where all key identifiers are missing
+    df.dropna(subset=key_columns + [ts_col], inplace=True)
+
+    print("[INFO] Sorting records by timestamp...")
+    df_sorted = df.sort_values(by=key_columns + [ts_col], ascending=[True]*len(key_columns) + [False])
+
+    grouped = df_sorted.groupby(key_columns)
     final_records = []
     
-    print(f"Processing {len(grouped)} unique issue groups...")
+    print(f"[INFO] Processing {len(grouped)} unique issue groups...")
     
     for _, group in grouped:
-        # The first row in each group is the latest one, which we will keep.
         latest_record = group.iloc[0].copy()
-        
-        # The number of duplicates is the size of the group minus the one we're keeping.
         num_duplicates = len(group) - 1
-        
-        if num_duplicates > 0:
-            # Add the count of removed duplicates to the existing recurring count.
-            latest_record['Recurring Issue'] += num_duplicates
-            
+        if num_duplicates > 0 and rec_col:
+            latest_record[rec_col] += num_duplicates
         final_records.append(latest_record)
 
-    # --- 4. Create and Save the Final DataFrame ---
     if not final_records:
-        print("No valid records found to process.")
+        print("[WARNING] No records found after grouping.")
         return
         
     df_final = pd.DataFrame(final_records)
+    df_final = df_final.sort_values(by=ts_col, ascending=False)
     
-    # Sort the final result by timestamp for a clean, chronological view.
-    df_final = df_final.sort_values(by='Timestamp', ascending=False)
-    
-    try:
-        df_final.to_csv(output_file, index=False)
-        print("\n--- Success! ---")
-        print(f"Removed {len(df) - len(df_final)} redundant records.")
-        print(f"Saved {len(df_final)} unique records to '{output_file}'")
-    except Exception as e:
-        print(f"Error saving the final CSV file: {e}")
+    output_dir = os.path.dirname(os.path.abspath(output_file))
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir, exist_ok=True)
+        print(f"[INFO] Created output directory: '{output_dir}'")
 
+    df_final.to_csv(output_file, index=False)
+    print(f"[SUCCESS] Removed {len(df) - len(df_final)} duplicates. Saved to '{output_file}'")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="De-duplicate vulnerability records in a CSV file, keeping the latest entry and updating the recurring issue count."
-    )
-    parser.add_argument("source_file", help="The path to the source CSV file with redundant records.")
-    parser.add_argument("output_file", help="The path where the cleaned, de-duplicated CSV file will be saved.")
+    parser = argparse.ArgumentParser(description="Dynamically Deduplicate Shadowserver CSV reports.")
+    parser.add_argument("source_file", help="Input CSV file")
+    parser.add_argument("output_file", help="Output CSV file")
+    
+    # We leave the type flag just in case older scripts call it, but ignore it.
+    parser.add_argument("-t", "--type", required=False, help="[Deprecated] Schema is auto-detected.")
     
     args = parser.parse_args()
-    
     deduplicate_and_update(args.source_file, args.output_file)
